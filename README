@@ -1,0 +1,16 @@
+ABA payway doc
+https://developer.payway.com.kh/purchase-14530820e0
+
+- sign up to sandbox to test API
+- received merchant id and others keys in the attachment of the reply email
+
+create simple test button using google ai studio
+add merchat id and api url
+click the button test from google ai studio but failed with error.request -> empty
+now download the code and run it from local host, run from locahost fail, but run with postman succeed
+
+now will deploy the project to google cloud run
+cloud run API key AIzaSyAEvpaQ1mpOFDSSZApmicPJzShDQZyTIXg
+use cloud run is complicated because i need docker file and use cloud build to build docker file failed
+now use https://dashboard.render.com/select-repo?type=blueprint&noreferrer=true 
+
