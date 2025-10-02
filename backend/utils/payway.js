@@ -1,0 +1,112 @@
+import crypto from 'crypto';
+import axios from 'axios';
+
+const PAYWAY_API_URL = 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase';
+const { MERCHANT_ID, API_KEY, BACKEND_URL, FRONTEND_URL } = process.env;
+
+/**
+ * Generates the HMAC-SHA512 hash required by the PayWay API.
+ * @param {string} message The concatenated string of transaction details.
+ * @returns {string} The Base64 encoded hash.
+ */
+function generateHash(message) {
+  const hmac = crypto.createHmac('sha512', API_KEY);
+  hmac.update(message);
+  return hmac.digest('base64');
+}
+
+/**
+ * Initiates a payment request to the PayWay API.
+ * @param {string} paymentOption The payment method ('cards' or 'abapay_khqr').
+ * @param {string} amount The transaction amount.
+ * @returns {Promise<object>} The response from the PayWay API.
+ */
+export async function initiatePayment(paymentOption, amount) {
+  if (!MERCHANT_ID || !API_KEY) {
+    throw new Error('Merchant ID or API Key is not configured in environment variables.');
+  }
+
+  const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const tran_id = `demo_txn_${Date.now()}`;
+
+  const items = [{
+    name: "Test Product",
+    quantity: 1,
+    price: amount
+  }];
+  const itemsString = JSON.stringify(items);
+  
+  // The string to be hashed, as per PayWay documentation.
+  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
+  const hash = generateHash(hashString);
+
+  const backendUrl = BACKEND_URL || 'http://localhost:4000';
+  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
+
+  const payload = {
+    req_time,
+    tran_id,
+    merchant_id: MERCHANT_ID,
+    amount,
+    items,
+    payment_option: paymentOption,
+    return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
+    cancel_url: `${frontendUrl}/payment-cancel`,
+    pushback_url: `${backendUrl}/api/payment-callback`,
+    hash,
+  };
+
+  try {
+    const response = await axios.post(PAYWAY_API_URL, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // We only need to return the link or the qr image to the frontend
+    const { checkout_link, khqr_image } = response.data;
+    return { checkout_link, khqr_image };
+
+  } catch (error) {
+    if (error.response) {
+      console.error('PayWay API Error Response:', error.response.data);
+      const errorMessage = error.response.data.description || `PayWay API request failed with status ${error.response.status}`;
+      throw new Error(errorMessage);
+    } else {
+      console.error('Failed to call PayWay API:', error.message);
+      throw new Error('Could not connect to the payment gateway.');
+    }
+  }
+}
+
+/**
+ * Verifies the pushback hash from PayWay.
+ * @param {object} pushbackData The data received from the PayWay pushback.
+ * @param {string} pushbackData.tran_id
+ * @param {string} pushbackData.merchant_id
+ * @param {string} pushbackData.status
+ * @param {string} pushbackData.amount
+ * @param {string} receivedHash The hash received in the pushback request.
+ * @returns {boolean} True if the hash is valid, false otherwise.
+ */
+export function verifyPushbackHash({ tran_id, merchant_id, status, amount }, receivedHash) {
+    if (!MERCHANT_ID || !API_KEY) {
+        console.error('Merchant ID or API Key is not configured for pushback verification.');
+        return false;
+    }
+
+    if (merchant_id !== MERCHANT_ID) {
+        console.error(`Mismatched Merchant ID in pushback. Expected ${MERCHANT_ID}, got ${merchant_id}.`);
+        return false;
+    }
+    
+    // As per PayWay docs, hash is on: tran_id + merchant_id + status + amount
+    const hashString = `${tran_id}${merchant_id}${status}${amount}`;
+    const expectedHash = generateHash(hashString);
+
+    const isValid = expectedHash === receivedHash;
+    if (!isValid) {
+        console.error(`Hash mismatch for tran_id ${tran_id}. Expected: ${expectedHash}, Received: ${receivedHash}`);
+    }
+    return isValid;
+}

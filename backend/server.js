@@ -1,96 +1,66 @@
-// backend/server.js
-import express from "express";
-import axios from "axios";
-import crypto from "crypto";
-import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import 'dotenv/config';
+import { initiatePayment, verifyPushbackHash } from './utils/payway.js';
 
 const app = express();
-app.use(cors()); // allow frontend localhost
-app.use(express.json());
+const PORT = process.env.PORT || 4000;
 
-app.post("/api/pay", async (req, res) => {
-  try {
-    const amount = req.body.amount;
-    const items = Buffer.from(req.body.items).toString('base64');
-    const currency = req.body.currency || "USD";
-    const merchant_id = process.env.payway_merchant_id;
+// Middleware
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json()); // To parse JSON bodies
 
-    const tran_id = `txn_${Date.now()}`;
-    const req_time = new Date().toISOString().slice(0, 19).replace("T", " ");
-    // generate hash (PayWay spec)
-    const hash = crypto
-      .createHash("sha512")
-      .update(merchant_id + tran_id + items + amount + req_time)
-      .digest("base64");
-
-    const payload = {
-      merchant_id,
-      req_time,
-      tran_id,
-      amount,
-      currency,
-      items,
-      hash,
-      view_type: "popup",
-      lifetime: 5
-    };
-
-    const apiUrl =
-      "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase";
-
-    const paywayRes = await axios.post(apiUrl, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-    res.send(paywayRes.data);
-   } catch (err) {
-    console.error("Purchase API error:", err.message);
-    res.status(500).send("Payment error");
-  }
+// Routes
+app.get('/', (req, res) => {
+  res.send('Payment Backend Server is running!');
 });
-app.post("/api/khqr", async (req, res) => {
+
+app.post('/api/create-payment', async (req, res) => {
+  const { paymentOption, amount } = req.body;
+
+  if (!paymentOption || !amount) {
+    return res.status(400).json({ message: 'Payment option and amount are required.' });
+  }
+
   try {
-    const amount = req.body.amount;
-    const items = Buffer.from(req.body.items).toString('base64');
-    const merchant_id = process.env.payway_merchant_id;
-    const currency = req.body.currency || "USD";
-    const tran_id = 2;
-    const req_time = new Date().toUTCString();
-    // generate hash (PayWay spec)
-    const hash = crypto
-      .createHash("sha512")
-      .update(merchant_id + tran_id + amount + req_time)
-      .digest("base64");
-
-    const payload = {
-      merchant_id,
-      req_time,
-      tran_id,
-      amount,
-      currency,
-      items,
-      payment_option: "abapay_khqr",
-      hash,
-      lifetime: 5, // minutes
-      qr_image_template: "template5_color",
-    };
-
-    const apiUrl =
-      "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr";
-
-    const paywayRes = await axios.post(apiUrl, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-
-    res.json(paywayRes.data);
-  } catch (err) {
-    console.error("Payment API error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Payment failed", details: err.response?.data || err.message });
+    const paymentResponse = await initiatePayment(paymentOption, amount);
+    res.status(200).json(paymentResponse);
+  } catch (error) {
+    console.error('Payment initiation failed:', error.message);
+    res.status(500).json({ message: error.message || 'An internal server error occurred.' });
   }
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+// New route for PayWay pushback (webhook)
+app.post('/api/payment-callback', (req, res) => {
+    const pushbackData = req.body;
+    console.log('Received PayWay Pushback:', pushbackData);
 
+    const { tran_id, status, amount, merchant_id, hash } = pushbackData;
+
+    if (!tran_id || !status || !amount || !merchant_id || !hash) {
+        console.error('Incomplete pushback data received.');
+        return res.status(400).json({ status: "1", message: "Bad Request: Missing required data." });
+    }
+
+    const isHashValid = verifyPushbackHash({ tran_id, status, amount, merchant_id }, hash);
+
+    if (isHashValid) {
+        console.log(`Hash verified for transaction ${tran_id}. Status: ${status}.`);
+        // Here you would typically update the transaction status in your database.
+        // For example: await database.updateTransaction(tran_id, { status: status });
+        
+        // Acknowledge receipt to PayWay is required.
+        res.status(200).json({ status: "0", message: "Success" });
+    } else {
+        console.error(`Invalid hash for transaction ${tran_id}. Pushback from PayWay will be ignored.`);
+        // Respond with an error status.
+        res.status(400).json({ status: "1", message: "Hash mismatch." });
+    }
+});
+
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

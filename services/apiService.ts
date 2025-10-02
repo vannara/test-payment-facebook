@@ -1,9 +1,10 @@
 // Simulates calling a Node.js backend.
 // In a real app, this would use fetch() or a library like axios to make HTTP requests.
 
-import { it } from "node:test";
-
 declare const axios: any;
+// Assumes the backend is running on port 4000
+const API_BASE_URL = 'http://localhost:4000';
+
 
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   console.log('Simulating API call with data:', data);
@@ -14,45 +15,29 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   });
 };
 
-export const testPurchase = async () => {
-    const res = await fetch("https://test-payment-facebook.onrender.com/api/pay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: "1.00",
-        currency: "USD",
-        items: [{ name: "Test Product", quantity: 1, price: "1.00" }],
-      }),
+export const createPayment = async (paymentOption: string, amount: string): Promise<{ checkout_link?: string; khqr_image?: string }> => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
+      paymentOption,
+      amount,
     });
-
-   // Open popup first (so browser doesn’t block)
-  const newWindow = window.open("", "_blank");
-  if (!newWindow) {
-    alert("Popup blocked! Please allow popups for this site.");
-    return;
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Error:', error.response.data);
+      throw new Error(error.response.data.message || `API request failed with status ${error.response.status}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Network Error:', error.request);
+      throw new Error('Network error: Could not connect to the backend server.');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request Setup Error:', error.message);
+      throw new Error(error.message || 'An unknown error occurred while setting up the request.');
+    }
   }
-   const html = await res.text();
-
-    // Inject HTML into popup
-    newWindow.document.open();
-    newWindow.document.write(html);
-    newWindow.document.close();
-};
-
-export const generateKHQR = async () => {
-   const res = await fetch("https://test-payment-facebook.onrender.com/api/khqr", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: "1.00",
-        currency: "USD",
-        items: [{ name: "Test Product", quantity: 1, price: "1.00" }]
-      }),
-    });
-
-    const data = await res.json();
-    console.log('KHQR API Success Response:', data);
-    return { success: true, message: 'KHQR payment request sent successfully! Check the console for the full API response.' };
 };
 
 export const postToFacebook = async (postContent: string): Promise<{ success: boolean; message: string; postId: string }> => {
