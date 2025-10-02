@@ -21,7 +21,7 @@ app.post("/api/pay", async (req, res) => {
     // generate hash (PayWay spec)
     const hash = crypto
       .createHash("sha512")
-      .update(merchant_id + tran_id + amount + req_time + api_key)
+      .update(merchant_id + tran_id + amount + req_time)
       .digest("hex");
 
     const payload = {
