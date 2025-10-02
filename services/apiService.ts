@@ -1,6 +1,8 @@
 // Simulates calling a Node.js backend.
 // In a real app, this would use fetch() or a library like axios to make HTTP requests.
 
+import { it } from "node:test";
+
 declare const axios: any;
 
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
@@ -13,12 +15,33 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
 };
 
 export const testKhqrPayment = async () => {
+  const itemsJson = JSON.stringify([{ name: "Test Product", quantity: 1, price: "1.00" }]);
+  const itemsBase64 = Buffer.from(itemsJson).toString('base64');
     const res = await fetch("https://test-payment-facebook.onrender.com/api/pay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount: "1.00",
-        items: [{ name: "Test Product", quantity: 1, price: "1.00" }],
+        items: itemsBase64,
+      }),
+    });
+
+    const data = await res.json();
+    console.log('KHQR API Success Response:', data);
+    return { success: true, message: 'KHQR payment request sent successfully! Check the console for the full API response.' };
+};
+
+export const generateKHQR = async () => {
+  const itemsJson = JSON.stringify([{ name: "Test Product", quantity: 1, price: "1.00" }]);
+  const itemsBase64 = Buffer.from(itemsJson).toString('base64');
+ 
+   const res = await fetch("https://test-payment-facebook.onrender.com/api/khqr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: "1.00",
+        currency: "USD",
+        items: itemsBase64
       }),
     });
 

@@ -29,6 +29,10 @@ const App: React.FC = () => {
   const handleTestKhqr = () => {
     handleApiCall(ActionType.KHQR, api.testKhqrPayment);
   };
+  
+  const handleGenerateKHQR = () => {
+    handleApiCall(ActionType.KHQR, api.generateKHQR);
+  }
 
   const handleFacebookPost = () => {
     handleApiCall(ActionType.Facebook, () => api.postToFacebook(facebookPost));
@@ -65,6 +69,13 @@ const App: React.FC = () => {
             variant="primary"
           >
             Test KHQR Payment Sandbox
+          </Button>
+          <Button
+            onClick={handleGenerateKHQR}
+            isLoading={loading === ActionType.KHQR}
+            variant="secondary"
+          >
+            Test Generate QR Code
           </Button>
         </Card>
 
