@@ -1,0 +1,5 @@
+{
+  "name": "Social & Payment Scheduler",
+  "description": "A simple web app to test a KHQR payment sandbox, post to Facebook, and schedule posts. This application simulates calls to a Node.js backend.",
+  "requestFramePermissions": []
+}
