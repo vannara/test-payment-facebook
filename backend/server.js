@@ -34,7 +34,7 @@ app.post("/api/pay", async (req, res) => {
       currency,
       items,
       hash,
-      view_type: popup,
+      view_type: "popup",
       lifetime: 5
     };
 
