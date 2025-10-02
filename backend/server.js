@@ -34,7 +34,7 @@ app.post("/api/pay", async (req, res) => {
       currency,
       items,
       hash,
-      view_type: "hosted_view", // or "popup"
+      view_type: "popup",
       lifetime: 5
     };
 
@@ -45,9 +45,9 @@ app.post("/api/pay", async (req, res) => {
       headers: { "Content-Type": "application/json" },
     });
     res.send(paywayRes.data);
-  } catch (err) {
-    console.error("Payment API error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Payment failed", details: err.response?.data || err.message });
+   } catch (err) {
+    console.error("Purchase API error:", err.message);
+    res.status(500).send("Payment error");
   }
 });
 app.post("/api/khqr", async (req, res) => {
