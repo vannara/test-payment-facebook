@@ -14,15 +14,14 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   });
 };
 
-export const testKhqrPayment = async () => {
-  const itemsJson = JSON.stringify([{ name: "Test Product", quantity: 1, price: "1.00" }]);
-  const itemsBase64 = Buffer.from(itemsJson).toString('base64');
+export const testPurchase = async () => {
     const res = await fetch("https://test-payment-facebook.onrender.com/api/pay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount: "1.00",
-        items: itemsBase64,
+        currency: "USD",
+        items: [{ name: "Test Product", quantity: 1, price: "1.00" }],
       }),
     });
 
@@ -32,16 +31,13 @@ export const testKhqrPayment = async () => {
 };
 
 export const generateKHQR = async () => {
-  const itemsJson = JSON.stringify([{ name: "Test Product", quantity: 1, price: "1.00" }]);
-  const itemsBase64 = Buffer.from(itemsJson).toString('base64');
- 
    const res = await fetch("https://test-payment-facebook.onrender.com/api/khqr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount: "1.00",
         currency: "USD",
-        items: itemsBase64
+        items: [{ name: "Test Product", quantity: 1, price: "1.00" }]
       }),
     });
 

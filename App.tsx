@@ -27,7 +27,7 @@ const App: React.FC = () => {
   };
 
   const handleTestKhqr = () => {
-    handleApiCall(ActionType.KHQR, api.testKhqrPayment);
+    handleApiCall(ActionType.KHQR, api.testPurchase);
   };
   
   const handleGenerateKHQR = () => {

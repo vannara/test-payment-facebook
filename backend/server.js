@@ -13,7 +13,9 @@ app.use(express.json());
 
 app.post("/api/pay", async (req, res) => {
   try {
-    const { amount, items } = req.body;
+    const amount = req.body.amount;
+    const items = Buffer.from(req.body.items).toString('base64');
+    const currency = req.body.currency || "USD";
     const merchant_id = process.env.payway_merchant_id;
 
     const tran_id = `txn_${Date.now()}`;
@@ -29,6 +31,7 @@ app.post("/api/pay", async (req, res) => {
       req_time,
       tran_id,
       amount,
+      currency,
       items,
       hash,
       view_type: popup,
@@ -51,7 +54,7 @@ app.post("/api/pay", async (req, res) => {
 app.post("/api/khqr", async (req, res) => {
   try {
     const amount = req.body.amount;
-    const items = req.body.items;
+    const items = Buffer.from(req.body.items).toString('base64');
     const merchant_id = process.env.payway_merchant_id;
     const currency = req.body.currency || "USD";
     const tran_id = `txn_qr_${Date.now()}`;
