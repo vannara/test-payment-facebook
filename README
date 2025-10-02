@@ -13,4 +13,11 @@ now will deploy the project to google cloud run
 cloud run API key AIzaSyAEvpaQ1mpOFDSSZApmicPJzShDQZyTIXg
 use cloud run is complicated because i need docker file and use cloud build to build docker file failed
 now use https://dashboard.render.com/select-repo?type=blueprint&noreferrer=true 
+deploy on render still run fail because we cannot call api url directly from react front end
+
+now adding backend/server.js the payment api. this func will call payway api
+react will call this backend 
+render will deploy backend service
+we can run front end locally and click on the button to call pay (our backend). now it is working
+
 
