@@ -14,13 +14,10 @@ app.use(express.json());
 app.post("/api/pay", async (req, res) => {
   try {
     const { amount, items } = req.body;
-
-    const merchant_id = process.env.PAYWAY_MERCHANT_ID;
-    const api_key = process.env.PAYWAY_API_KEY;
+    const merchant_id = ec461963;
 
     const tran_id = `txn_${Date.now()}`;
     const req_time = new Date().toISOString().slice(0, 19).replace("T", " ");
-
     // generate hash (PayWay spec)
     const hash = crypto
       .createHash("sha512")
