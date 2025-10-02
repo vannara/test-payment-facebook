@@ -34,7 +34,7 @@ app.post("/api/pay", async (req, res) => {
       currency,
       items,
       hash,
-      view_type: "popup",
+      view_type: "hosted_view", // or "popup"
       lifetime: 5
     };
 
@@ -44,8 +44,7 @@ app.post("/api/pay", async (req, res) => {
     const paywayRes = await axios.post(apiUrl, payload, {
       headers: { "Content-Type": "application/json" },
     });
-
-    res.json(paywayRes.data);
+    res.send(paywayRes.data);
   } catch (err) {
     console.error("Payment API error:", err.response?.data || err.message);
     res.status(500).json({ error: "Payment failed", details: err.response?.data || err.message });
@@ -57,8 +56,8 @@ app.post("/api/khqr", async (req, res) => {
     const items = Buffer.from(req.body.items).toString('base64');
     const merchant_id = process.env.payway_merchant_id;
     const currency = req.body.currency || "USD";
-    const tran_id = `txn_qr_${Date.now()}`;
-    const req_time = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const tran_id = 2;
+    const req_time = new Date().toUTCString();
     // generate hash (PayWay spec)
     const hash = crypto
       .createHash("sha512")

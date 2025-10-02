@@ -25,9 +25,18 @@ export const testPurchase = async () => {
       }),
     });
 
-    const data = await res.json();
-    console.log('KHQR API Success Response:', data);
-    return { success: true, message: 'KHQR payment request sent successfully! Check the console for the full API response.' };
+   // Open popup first (so browser doesn’t block)
+  const newWindow = window.open("", "_blank");
+  if (!newWindow) {
+    alert("Popup blocked! Please allow popups for this site.");
+    return;
+  }
+   const html = await res.text();
+
+    // Inject HTML into popup
+    newWindow.document.open();
+    newWindow.document.write(html);
+    newWindow.document.close();
 };
 
 export const generateKHQR = async () => {

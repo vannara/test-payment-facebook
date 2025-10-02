@@ -68,7 +68,7 @@ const App: React.FC = () => {
             isLoading={loading === ActionType.KHQR}
             variant="primary"
           >
-            Test KHQR Payment Sandbox
+            Test Payment Options
           </Button>
           <Button
             onClick={handleGenerateKHQR}
