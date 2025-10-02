@@ -72,7 +72,7 @@ app.post("/api/pay", async (req, res) => {
     };
 
     const apiUrl =
-      "https://checkout-sandbox.payway.com.kh//api/payment-gateway/v1/payments/generate-qr";
+      "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr";
 
     const paywayRes = await axios.post(apiUrl, payload, {
       headers: { "Content-Type": "application/json" },
@@ -81,7 +81,7 @@ app.post("/api/pay", async (req, res) => {
     res.json(paywayRes.data);
   } catch (err) {
     console.error("Payment API error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Payment failed" });
+    res.status(500).json({ error: "Payment failed", details: err.response?.data || err.message });
   }
 });
 
