@@ -10,7 +10,6 @@ click the button test from google ai studio but failed with error.request -> emp
 now download the code and run it from local host, run from locahost fail, but run with postman succeed
 
 now will deploy the project to google cloud run
-cloud run API key AIzaSyAEvpaQ1mpOFDSSZApmicPJzShDQZyTIXg
 use cloud run is complicated because i need docker file and use cloud build to build docker file failed
 now use https://dashboard.render.com/select-repo?type=blueprint&noreferrer=true 
 deploy on render still run fail because we cannot call api url directly from react front end
