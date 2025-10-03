@@ -20,72 +20,51 @@ function generateHash(message) {
 }
 
 /**
- * Prepares the payload for a credit card payment form submission.
- * This function does NOT call the PayWay API. It prepares data for the frontend.
+ * Generates a more robust transaction ID in the format YYYYMMDDHHMMSSsss.
+ * @returns {string} A unique transaction ID.
+ */
+function generateTransactionId() {
+    const d = new Date();
+    const pad = (num) => num.toString().padStart(2, '0');
+    const YYYY = d.getFullYear();
+    const MM = pad(d.getMonth() + 1);
+    const DD = pad(d.getDate());
+    const HH = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${YYYY}${MM}${DD}${HH}${mm}${ss}${randomSuffix}`;
+}
+
+/**
+ * Initiates a payment request to the PayWay API for any payment method.
+ * @param {string} paymentOption The payment method ('cards', 'abapay_khqr', etc.).
  * @param {string} amount The transaction amount.
  * @param {Array} items The list of items for the transaction.
- * @returns {object} The payload object to be used in the form.
+ * @returns {Promise<object>} A classified response from the PayWay API.
  */
-export function generateCardPaymentPayload(amount, items) {
+export async function initiatePayment(paymentOption, amount, items) {
   if (!MERCHANT_ID || !API_KEY) {
     throw new Error('Merchant ID or API Key is not configured in environment variables.');
   }
 
   const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  const tran_id = `demo_txn_${Date.now()}`;
+  const tran_id = generateTransactionId();
   const itemsString = JSON.stringify(items);
-  const paymentOption = 'cards';
+  const formattedAmount = parseFloat(amount).toFixed(2);
 
-  // The string to be hashed, as per PayWay documentation.
-  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
+  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${formattedAmount}${itemsString}${paymentOption}`;
   const hash = generateHash(hashString);
 
   const backendUrl = BACKEND_URL || 'http://localhost:4000';
   const frontendUrl = FRONTEND_URL || 'http://localhost:3001';
 
-  return {
-    req_time,
-    tran_id,
-    merchant_id: MERCHANT_ID,
-    amount,
-    items: itemsString, // For form submission, this must be a string
-    payment_option: paymentOption,
-    return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
-    cancel_url: `${frontendUrl}/payment-cancel`,
-    pushback_url: `${backendUrl}/api/payment-callback`,
-    hash,
-  };
-}
-
-
-/**
- * Initiates a KHQR payment request to the PayWay API.
- * @param {string} amount The transaction amount.
- * @param {Array} items The list of items for the transaction.
- * @returns {Promise<object>} The response from the PayWay API containing the QR image.
- */
-export async function initiateKhqrPayment(amount, items) {
-  if (!MERCHANT_ID || !API_KEY) {
-    throw new Error('Merchant ID or API Key is not configured in environment variables.');
-  }
-
-  const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  const tran_id = `demo_txn_${Date.now()}`;
-  const itemsString = JSON.stringify(items);
-  const paymentOption = 'abapay_khqr';
-  
-  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
-  const hash = generateHash(hashString);
-
-  const backendUrl = BACKEND_URL || 'http://localhost:4000';
-  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
-
   const payload = {
     req_time,
     tran_id,
     merchant_id: MERCHANT_ID,
-    amount,
-    items, // For KHQR API call, send as a JSON object
+    amount: formattedAmount,
+    items, // For API call, send as a JSON object, axios handles stringification
     payment_option: paymentOption,
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
@@ -99,10 +78,23 @@ export async function initiateKhqrPayment(amount, items) {
         'Content-Type': 'application/json',
       },
     });
-    return response.data;
+    
+    // Intelligently determine the response type
+    const contentType = response.headers['content-type'];
+    if (contentType && contentType.includes('text/html')) {
+        return { type: 'html', data: response.data };
+    } else {
+        // Assume JSON for KHQR or any other non-HTML responses
+        return { type: 'json', data: response.data };
+    }
+
   } catch (error) {
     if (error.response) {
       console.error('PayWay API Error Response:', error.response.data);
+      // If the error response is HTML, it might contain useful info
+      if (typeof error.response.data === 'string' && error.response.data.toLowerCase().includes('unable to process')) {
+          throw new Error('The payment gateway was unable to process the request. Please check transaction details.');
+      }
       const errorMessage = error.response.data.description || `PayWay API request failed with status ${error.response.status}`;
       throw new Error(errorMessage);
     } else {

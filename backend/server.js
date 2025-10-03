@@ -2,10 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { 
-    generateCardPaymentPayload, 
-    initiateKhqrPayment, 
-    verifyPushbackHash,
-    PAYWAY_API_URL
+    initiatePayment,
+    verifyPushbackHash
 } from './utils/payway.js';
 
 const app = express();
@@ -46,21 +44,15 @@ app.post('/api/create-payment', async (req, res) => {
   }
 
   try {
-    if (paymentOption === 'cards') {
-      const paymentPayload = generateCardPaymentPayload(amount, items);
-      res.status(200).json({
-        type: 'form_redirect',
-        payload: paymentPayload,
-        url: PAYWAY_API_URL,
-      });
-    } else if (paymentOption === 'abapay_khqr') {
-      const khqrResponse = await initiateKhqrPayment(amount, items);
-      res.status(200).json({
-        type: 'khqr',
-        payload: khqrResponse,
-      });
+    const result = await initiatePayment(paymentOption, amount, items);
+
+    if (result.type === 'html') {
+        res.status(200).json({ type: 'html', html: result.data });
+    } else if (result.type === 'json') {
+        // This path is now primarily for KHQR if it returns JSON
+        res.status(200).json({ type: 'khqr', payload: result.data });
     } else {
-      return res.status(400).json({ message: 'Invalid payment option provided.' });
+        res.status(500).json({ message: 'Received an unknown response type from the payment gateway.' });
     }
   } catch (error) {
     console.error('Payment creation failed:', error.message);

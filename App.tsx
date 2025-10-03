@@ -5,39 +5,6 @@ import Button from './components/Button';
 import { PaymentIcon, FacebookIcon, CalendarIcon, CreditCardIcon } from './components/icons';
 import { ActionType } from './types';
 
-/**
- * Creates and submits a hidden form to perform a POST redirect.
- * This is the standard method for redirecting to a payment gateway
- * without running into CORS issues.
- * @param url The URL to post the form to.
- * @param data The data to include in the form as hidden fields.
- */
-const performRedirect = (url: string, data: { [key: string]: string }) => {
-    // Create a form element
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url;
-    form.style.display = 'none'; // Hide the form from the user
-
-    // Add data as hidden input fields
-    for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = data[key];
-            form.appendChild(input);
-        }
-    }
-
-    // Append the form to the body, submit it, and then remove it.
-    // The submission will trigger a page navigation.
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-};
-
-
 const App: React.FC = () => {
   const [facebookPost, setFacebookPost] = useState('');
   const [scheduledPost, setScheduledPost] = useState('Hello this is a schedule post from nodejs app');
@@ -45,7 +12,10 @@ const App: React.FC = () => {
   
   const [paymentOption, setPaymentOption] = useState<'credit_card' | 'khqr' | null>(null);
   const [amount, setAmount] = useState('1.00');
+  
+  // State for the two modal types
   const [khqrImage, setKhqrImage] = useState<string | null>(null);
+  const [paymentHtml, setPaymentHtml] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<ActionType | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -53,24 +23,19 @@ const App: React.FC = () => {
   const handleApiCall = async (action: ActionType, apiFn: () => Promise<api.PaymentApiResponse | any>) => {
     setLoading(action);
     setFeedback(null);
-    let isRedirecting = false; // Flag to prevent resetting loading state on redirect
 
     try {
       const result = await apiFn();
       if (action === ActionType.Payment) {
-        // Handle the new response structure from our backend
-        if (result.type === 'form_redirect') {
-            setFeedback({ type: 'success', message: 'Redirecting to secure payment page...' });
-            isRedirecting = true;
-            // A short delay gives the user time to see the feedback message
-            setTimeout(() => performRedirect(result.url, result.payload), 500);
-            return; // Stop execution to allow for redirect
+        if (result.type === 'html') {
+          setFeedback({ type: 'success', message: 'Opening secure payment page...' });
+          setPaymentHtml(result.html);
         } else if (result.type === 'khqr' && result.payload.khqr_image) {
-            setFeedback({ type: 'success', message: 'QR Code generated successfully.' });
-            setKhqrImage(`data:image/png;base64,${result.payload.khqr_image}`);
+          setFeedback({ type: 'success', message: 'QR Code generated successfully.' });
+          setKhqrImage(`data:image/png;base64,${result.payload.khqr_image}`);
         } else {
-            console.error('Unexpected payment API response:', result);
-            setFeedback({ type: 'error', message: 'Received an unexpected response from the payment server.' });
+          console.error('Unexpected payment API response:', result);
+          setFeedback({ type: 'error', message: 'Received an unexpected response from the payment server.' });
         }
       } else {
          setFeedback({ type: 'success', message: result.message });
@@ -78,10 +43,7 @@ const App: React.FC = () => {
     } catch (error: any) {
       setFeedback({ type: 'error', message: error.message || 'An unexpected error occurred.' });
     } finally {
-      // Only reset loading state if we are not navigating away
-      if (!isRedirecting) {
-        setLoading(null);
-      }
+      setLoading(null);
     }
   };
 
@@ -89,7 +51,6 @@ const App: React.FC = () => {
     if (!paymentOption || !amount) return;
     const paymentMethod = paymentOption === 'khqr' ? 'abapay_khqr' : 'cards';
     
-    // Create a sample items array to send to the backend
     const items = [{
         name: "Sample Item",
         quantity: 1,
@@ -150,9 +111,37 @@ const App: React.FC = () => {
     );
   };
 
+  const PaymentModal: React.FC<{ html: string | null; onClose: () => void }> = ({ html, onClose }) => {
+    if (!html) return null;
+
+    const baseUrl = 'https://checkout-sandbox.payway.com.kh/';
+    const processedHtml = html.replace('<head>', `<head><base href="${baseUrl}">`);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md h-[95vh] sm:h-[80vh] flex flex-col overflow-hidden">
+                <header className="p-4 border-b flex justify-between items-center bg-gray-50 flex-shrink-0">
+                    <h3 className="font-bold text-lg text-gray-800">Complete Secure Payment</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                </header>
+                <div className="w-full h-full flex-grow">
+                    <iframe
+                        srcDoc={processedHtml}
+                        title="Secure ABA PayWay Payment"
+                        className="w-full h-full border-0"
+                        sandbox="allow-forms allow-scripts allow-same-origin"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      {khqrImage && <KhqrModal />}
+      <KhqrModal />
+      <PaymentModal html={paymentHtml} onClose={() => setPaymentHtml(null)} />
+
       <div className="w-full max-w-lg space-y-8">
         <header className="text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">Backend Task Manager</h1>
