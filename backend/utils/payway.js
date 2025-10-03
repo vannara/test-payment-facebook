@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 
-const PAYWAY_API_URL = 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase';
+export const PAYWAY_API_URL = 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase';
 const MERCHANT_ID = process.env.MERCHANT_ID;
 const API_KEY = process.env.API_KEY;
 const BACKEND_URL = process.env.BACKEND_URL; // e.g., 'https://your-backend.com'
@@ -20,23 +20,60 @@ function generateHash(message) {
 }
 
 /**
- * Initiates a payment request to the PayWay API.
- * @param {string} paymentOption The payment method ('cards' or 'abapay_khqr').
+ * Prepares the payload for a credit card payment form submission.
+ * This function does NOT call the PayWay API. It prepares data for the frontend.
  * @param {string} amount The transaction amount.
  * @param {Array} items The list of items for the transaction.
- * @returns {Promise<object>} The response from the PayWay API.
+ * @returns {object} The payload object to be used in the form.
  */
-export async function initiatePayment(paymentOption, amount, items) {
+export function generateCardPaymentPayload(amount, items) {
   if (!MERCHANT_ID || !API_KEY) {
     throw new Error('Merchant ID or API Key is not configured in environment variables.');
   }
 
   const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const tran_id = `demo_txn_${Date.now()}`;
-
   const itemsString = JSON.stringify(items);
-  
+  const paymentOption = 'cards';
+
   // The string to be hashed, as per PayWay documentation.
+  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
+  const hash = generateHash(hashString);
+
+  const backendUrl = BACKEND_URL || 'http://localhost:4000';
+  const frontendUrl = FRONTEND_URL || 'http://localhost:3001';
+
+  return {
+    req_time,
+    tran_id,
+    merchant_id: MERCHANT_ID,
+    amount,
+    items: itemsString, // For form submission, this must be a string
+    payment_option: paymentOption,
+    return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
+    cancel_url: `${frontendUrl}/payment-cancel`,
+    pushback_url: `${backendUrl}/api/payment-callback`,
+    hash,
+  };
+}
+
+
+/**
+ * Initiates a KHQR payment request to the PayWay API.
+ * @param {string} amount The transaction amount.
+ * @param {Array} items The list of items for the transaction.
+ * @returns {Promise<object>} The response from the PayWay API containing the QR image.
+ */
+export async function initiateKhqrPayment(amount, items) {
+  if (!MERCHANT_ID || !API_KEY) {
+    throw new Error('Merchant ID or API Key is not configured in environment variables.');
+  }
+
+  const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const tran_id = `demo_txn_${Date.now()}`;
+  const itemsString = JSON.stringify(items);
+  const paymentOption = 'abapay_khqr';
+  
   const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
   const hash = generateHash(hashString);
 
@@ -48,7 +85,7 @@ export async function initiatePayment(paymentOption, amount, items) {
     tran_id,
     merchant_id: MERCHANT_ID,
     amount,
-    items,
+    items, // For KHQR API call, send as a JSON object
     payment_option: paymentOption,
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
@@ -62,18 +99,7 @@ export async function initiatePayment(paymentOption, amount, items) {
         'Content-Type': 'application/json',
       },
     });
-
-    // **FIX:** Normalize the response for the frontend.
-    // If the payment is by card, PayWay returns a full HTML document as a string.
-    // We wrap it in a JSON object so the frontend knows how to handle it.
-    if (typeof response.data === 'string') {
-        return { html: response.data };
-    }
-
-    // For other payment types like KHQR, PayWay returns JSON. Return it directly.
-   
     return response.data;
-
   } catch (error) {
     if (error.response) {
       console.error('PayWay API Error Response:', error.response.data);

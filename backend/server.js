@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import { initiatePayment, verifyPushbackHash } from './utils/payway.js';
+import { 
+    generateCardPaymentPayload, 
+    initiateKhqrPayment, 
+    verifyPushbackHash,
+    PAYWAY_API_URL
+} from './utils/payway.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -41,10 +46,24 @@ app.post('/api/create-payment', async (req, res) => {
   }
 
   try {
-    const paymentResponse = await initiatePayment(paymentOption, amount, items);
-    res.status(200).json(paymentResponse);
+    if (paymentOption === 'cards') {
+      const paymentPayload = generateCardPaymentPayload(amount, items);
+      res.status(200).json({
+        type: 'form_redirect',
+        payload: paymentPayload,
+        url: PAYWAY_API_URL,
+      });
+    } else if (paymentOption === 'abapay_khqr') {
+      const khqrResponse = await initiateKhqrPayment(amount, items);
+      res.status(200).json({
+        type: 'khqr',
+        payload: khqrResponse,
+      });
+    } else {
+      return res.status(400).json({ message: 'Invalid payment option provided.' });
+    }
   } catch (error) {
-    console.error('Payment initiation failed:', error.message);
+    console.error('Payment creation failed:', error.message);
     res.status(500).json({ message: error.message || 'An internal server error occurred.' });
   }
 });

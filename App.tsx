@@ -5,6 +5,39 @@ import Button from './components/Button';
 import { PaymentIcon, FacebookIcon, CalendarIcon, CreditCardIcon } from './components/icons';
 import { ActionType } from './types';
 
+/**
+ * Creates and submits a hidden form to perform a POST redirect.
+ * This is the standard method for redirecting to a payment gateway
+ * without running into CORS issues.
+ * @param url The URL to post the form to.
+ * @param data The data to include in the form as hidden fields.
+ */
+const performRedirect = (url: string, data: { [key: string]: string }) => {
+    // Create a form element
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.style.display = 'none'; // Hide the form from the user
+
+    // Add data as hidden input fields
+    for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+    }
+
+    // Append the form to the body, submit it, and then remove it.
+    // The submission will trigger a page navigation.
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+};
+
+
 const App: React.FC = () => {
   const [facebookPost, setFacebookPost] = useState('');
   const [scheduledPost, setScheduledPost] = useState('Hello this is a schedule post from nodejs app');
@@ -17,23 +50,24 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<ActionType | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleApiCall = async (action: ActionType, apiFn: () => Promise<any>) => {
+  const handleApiCall = async (action: ActionType, apiFn: () => Promise<api.PaymentApiResponse | any>) => {
     setLoading(action);
     setFeedback(null);
+    let isRedirecting = false; // Flag to prevent resetting loading state on redirect
+
     try {
       const result = await apiFn();
       if (action === ActionType.Payment) {
-        if (result.html && typeof result.html === 'string') {
+        // Handle the new response structure from our backend
+        if (result.type === 'form_redirect') {
             setFeedback({ type: 'success', message: 'Redirecting to secure payment page...' });
-            // The response is a full HTML page. We create a Blob and a local URL
-            // to render it, effectively navigating the user to the payment form.
-            const blob = new Blob([result.html], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            window.location.replace(url); // Use replace to not add to browser history
+            isRedirecting = true;
+            // A short delay gives the user time to see the feedback message
+            setTimeout(() => performRedirect(result.url, result.payload), 500);
             return; // Stop execution to allow for redirect
-        } else if (result.khqr_image) {
+        } else if (result.type === 'khqr' && result.payload.khqr_image) {
             setFeedback({ type: 'success', message: 'QR Code generated successfully.' });
-            setKhqrImage(`data:image/png;base64,${result.khqr_image}`);
+            setKhqrImage(`data:image/png;base64,${result.payload.khqr_image}`);
         } else {
             console.error('Unexpected payment API response:', result);
             setFeedback({ type: 'error', message: 'Received an unexpected response from the payment server.' });
@@ -44,7 +78,10 @@ const App: React.FC = () => {
     } catch (error: any) {
       setFeedback({ type: 'error', message: error.message || 'An unexpected error occurred.' });
     } finally {
-      setLoading(null);
+      // Only reset loading state if we are not navigating away
+      if (!isRedirecting) {
+        setLoading(null);
+      }
     }
   };
 

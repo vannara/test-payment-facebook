@@ -13,7 +13,6 @@ declare const axios: any;
 // ===================================================================================
 const API_BASE_URL = 'https://test-payment-facebook.onrender.com'; 
 
-
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   console.log('Simulating API call with data:', data);
   return new Promise(resolve => {
@@ -23,7 +22,31 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   });
 };
 
-export const createPayment = async (paymentOption: string, amount: string, items: any[]): Promise<{ html?: string; khqr_image?: string; }> => {
+// --- NEW TYPE DEFINITIONS FOR PAYMENT FLOW ---
+
+export interface CardPaymentPayload {
+  req_time: string;
+  tran_id: string;
+  merchant_id: string;
+  amount: string;
+  items: string; // This is a JSON string
+  payment_option: string;
+  return_url: string;
+  cancel_url: string;
+  pushback_url: string;
+  hash: string;
+}
+
+export type PaymentApiResponse = {
+  type: 'form_redirect';
+  payload: CardPaymentPayload;
+  url: string;
+} | {
+  type: 'khqr';
+  payload: { khqr_image?: string; };
+};
+
+export const createPayment = async (paymentOption: string, amount: string, items: any[]): Promise<PaymentApiResponse> => {
   try {
     const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
       paymentOption,
