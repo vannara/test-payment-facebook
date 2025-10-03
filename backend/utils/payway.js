@@ -52,15 +52,15 @@ export async function initiatePayment(paymentOption, amount, items) {
   const tran_id = generateTransactionId();
   const formattedAmount = parseFloat(amount).toFixed(2);
 
-  // CRITICAL FIX: Ensure prices within items are also formatted strings 
-  // with 2 decimal places for hash consistency and payload accuracy.
   const formattedItems = items.map(item => ({
       ...item,
       price: parseFloat(item.price).toFixed(2)
   }));
   const itemsString = JSON.stringify(formattedItems);
 
-  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${formattedAmount}${itemsString}${paymentOption}`;
+  // CRITICAL FIX: The hash string MUST match the documentation exactly.
+  // It does NOT include the payment_option field.
+  const hashString = `${req_time}${tran_id}${MERCHANT_ID}${formattedAmount}${itemsString}`;
   const hash = generateHash(hashString);
 
   const backendUrl = BACKEND_URL || 'http://localhost:4000';
@@ -71,8 +71,8 @@ export async function initiatePayment(paymentOption, amount, items) {
     tran_id,
     merchant_id: MERCHANT_ID,
     amount: formattedAmount,
-    items: formattedItems, // Use the formatted items in the payload
-    payment_option: paymentOption,
+    items: formattedItems,
+    payment_option: paymentOption, // This field is part of the payload, but not the hash.
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
     pushback_url: `${backendUrl}/api/payment-callback`,
@@ -86,23 +86,20 @@ export async function initiatePayment(paymentOption, amount, items) {
       },
     });
     
-    // Intelligently determine the response type
     const contentType = response.headers['content-type'];
     if (contentType && contentType.includes('text/html')) {
         return { type: 'html', data: response.data };
     } else {
-        // Assume JSON for KHQR or any other non-HTML responses
         return { type: 'json', data: response.data };
     }
 
   } catch (error) {
     if (error.response) {
       console.error('PayWay API Error Response:', error.response.data);
-      // If the error response is HTML, it might contain useful info
       if (typeof error.response.data === 'string' && error.response.data.toLowerCase().includes('unable to process')) {
           throw new Error('The payment gateway was unable to process the request. Please check transaction details.');
       }
-      const errorMessage = error.response.data.description || `PayWay API request failed with status ${error.response.status}`;
+      const errorMessage = error.response.data?.status?.message || error.response.data?.description || `PayWay API request failed with status ${error.response.status}`;
       throw new Error(errorMessage);
     } else {
       console.error('Failed to call PayWay API:', error.message);
