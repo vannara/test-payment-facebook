@@ -68,15 +68,35 @@ export async function initiatePayment(paymentOption, amount, items) {
 
   const payload = {
     req_time,
-    tran_id,
-    merchant_id: MERCHANT_ID,
-    amount: formattedAmount,
-    items: formattedItems,
+    merchant_id,
+    tran_id: generateTransactionId(),
+    amount: "1.00",
+    items: [{
+        name: "Test Product",
+        quantity: 1,
+        price: "1.00"
+    }],
+    shipping: "0.00",
+    firstname: "",
+    lastname: "",
+    email: "",
+    phone: "",
+    type: "",
     payment_option: paymentOption,
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
     pushback_url: `${backendUrl}/api/payment-callback`,
-    hash,
+    continue_success_url: "",
+    return_deeplink: "",
+    currency: "USD",
+    custom_fields: "",
+    return_params: "",
+    payout: "",
+    lifetime: 300,
+    additional_params: "",
+    google_pay_token: "",
+    skip_success_page: false,
+    public_key: "",
     view_type: 'popup'
   };
 
