@@ -3,7 +3,7 @@
 
 declare const axios: any;
 // Assumes the backend is running on port 4000
-const API_BASE_URL = 'http://localhost:4000';
+const API_BASE_URL = process.env.API_BASE_URL;
 
 
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
@@ -17,7 +17,7 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
 
 export const createPayment = async (paymentOption: string, amount: string): Promise<{ checkout_link?: string; khqr_image?: string }> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
+    const response = await axios.post(`https://test-payment-facebook.onrender.com/api/create-payment`, {
       paymentOption,
       amount,
     });

@@ -2,7 +2,10 @@ import crypto from 'crypto';
 import axios from 'axios';
 
 const PAYWAY_API_URL = 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase';
-const { MERCHANT_ID, API_KEY, BACKEND_URL, FRONTEND_URL } = process.env;
+const MERCHANT_ID = process.env.MERCHANT_ID;
+const API_KEY = process.env.API_KEY;
+const BACKEND_URL = process.env.BACKEND_URL; // e.g., 'https://your-backend.com'
+const FRONTEND_URL = process.env.FRONTEND_URL; // e.g., 'https://your-frontend.com'
 
 /**
  * Generates the HMAC-SHA512 hash required by the PayWay API.
@@ -40,8 +43,8 @@ export async function initiatePayment(paymentOption, amount) {
   const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
   const hash = generateHash(hashString);
 
-  const backendUrl = BACKEND_URL || 'http://localhost:4000';
-  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
+  const backendUrl = BACKEND_URL ;
+  const frontendUrl = FRONTEND_URL ;
 
   const payload = {
     req_time,
