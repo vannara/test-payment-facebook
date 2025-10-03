@@ -2,8 +2,23 @@
 // In a real app, this would use fetch() or a library like axios to make HTTP requests.
 
 declare const axios: any;
-// Assumes the backend is running on port 4000
-const API_BASE_URL = process.env.API_BASE_URL;
+
+// ===================================================================================
+// IMPORTANT: CONFIGURATION REQUIRED
+// ===================================================================================
+// Replace the URL below with the actual URL of your backend deployed on Render.com.
+// Your Render backend URL will look something like: https://your-app-name.onrender.com
+//
+// You MUST change this value for your local frontend to connect to the deployed backend.
+// ===================================================================================
+const API_BASE_URL = 'https://test-payment-facebook.onrender.com'; // <-- CHANGE THIS!
+
+
+// Safety check to ensure the URL has been configured.
+if (API_BASE_URL === 'https://test-payment-facebook.onrender.com' || API_BASE_URL === 'http://localhost:4000') {
+  console.warn(`%c[ATTENTION] API_BASE_URL is not configured!`, 'color: #ff6347; font-weight: bold; font-size: 14px;');
+  console.warn(`Please open 'services/apiService.ts' and set API_BASE_URL to your deployed backend's URL.`);
+}
 
 
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
@@ -17,7 +32,7 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
 
 export const createPayment = async (paymentOption: string, amount: string): Promise<{ checkout_link?: string; khqr_image?: string }> => {
   try {
-    const response = await axios.post(`https://test-payment-facebook.onrender.com/api/create-payment`, {
+    const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
       paymentOption,
       amount,
     });
@@ -31,7 +46,7 @@ export const createPayment = async (paymentOption: string, amount: string): Prom
     } else if (error.request) {
       // The request was made but no response was received
       console.error('Network Error:', error.request);
-      throw new Error('Network error: Could not connect to the backend server.');
+      throw new Error('Network error: Could not connect to the backend server. Is the API_BASE_URL in apiService.ts correct and is the backend running?');
     } else {
       // Something happened in setting up the request that triggered an Error
       console.error('Request Setup Error:', error.message);
