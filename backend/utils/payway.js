@@ -7,6 +7,7 @@ const API_KEY = process.env.API_KEY;
 const BACKEND_URL = process.env.BACKEND_URL; // e.g., 'https://your-backend.com'
 const FRONTEND_URL = process.env.FRONTEND_URL; // e.g., 'https://your-frontend.com'
 
+
 /**
  * Generates the HMAC-SHA512 hash required by the PayWay API.
  * @param {string} message The concatenated string of transaction details.
@@ -22,9 +23,10 @@ function generateHash(message) {
  * Initiates a payment request to the PayWay API.
  * @param {string} paymentOption The payment method ('cards' or 'abapay_khqr').
  * @param {string} amount The transaction amount.
+ * @param {Array} items The list of items for the transaction.
  * @returns {Promise<object>} The response from the PayWay API.
  */
-export async function initiatePayment(paymentOption, amount) {
+export async function initiatePayment(paymentOption, amount, items) {
   if (!MERCHANT_ID || !API_KEY) {
     throw new Error('Merchant ID or API Key is not configured in environment variables.');
   }
@@ -32,19 +34,14 @@ export async function initiatePayment(paymentOption, amount) {
   const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const tran_id = `demo_txn_${Date.now()}`;
 
-  const items = [{
-    name: "Test Product",
-    quantity: 1,
-    price: amount
-  }];
   const itemsString = JSON.stringify(items);
   
   // The string to be hashed, as per PayWay documentation.
   const hashString = `${req_time}${tran_id}${MERCHANT_ID}${amount}${itemsString}${paymentOption}`;
   const hash = generateHash(hashString);
 
-  const backendUrl = BACKEND_URL ;
-  const frontendUrl = FRONTEND_URL ;
+  const backendUrl = BACKEND_URL || 'http://localhost:4000';
+  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
 
   const payload = {
     req_time,
@@ -66,9 +63,9 @@ export async function initiatePayment(paymentOption, amount) {
       },
     });
 
-    // We only need to return the link or the qr image to the frontend
-    const { checkout_link, khqr_image } = response.data;
-    return { checkout_link, khqr_image };
+    // **FIX:** Return the entire data object from PayWay.
+    // This is more robust and prevents issues where expected keys are missing.
+    return response.data;
 
   } catch (error) {
     if (error.response) {

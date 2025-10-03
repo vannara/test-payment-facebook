@@ -11,14 +11,7 @@ declare const axios: any;
 //
 // You MUST change this value for your local frontend to connect to the deployed backend.
 // ===================================================================================
-const API_BASE_URL = 'https://test-payment-facebook.onrender.com'; // <-- CHANGE THIS!
-
-
-// Safety check to ensure the URL has been configured.
-if (API_BASE_URL === 'https://test-payment-facebook.onrender.com' || API_BASE_URL === 'http://localhost:4000') {
-  console.warn(`%c[ATTENTION] API_BASE_URL is not configured!`, 'color: #ff6347; font-weight: bold; font-size: 14px;');
-  console.warn(`Please open 'services/apiService.ts' and set API_BASE_URL to your deployed backend's URL.`);
-}
+const API_BASE_URL = 'https://test-payment-facebook.onrender.com'; 
 
 
 const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
@@ -30,11 +23,12 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   });
 };
 
-export const createPayment = async (paymentOption: string, amount: string): Promise<{ checkout_link?: string; khqr_image?: string }> => {
+export const createPayment = async (paymentOption: string, amount: string, items: any[]): Promise<{ checkout_link?: string; khqr_image?: string }> => {
   try {
     const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
       paymentOption,
       amount,
+      items,
     });
     return response.data;
   } catch (error: any) {

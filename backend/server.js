@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 4000;
 // Enhanced CORS setup for better security and flexibility
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',') 
-  : ['http://localhost:3001', 'http://127.0.0.1:3000'];
+  : ['http://localhost:3001', 'http://127.0.0.1:3001'];
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -34,14 +34,14 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/create-payment', async (req, res) => {
-  const { paymentOption, amount } = req.body;
+  const { paymentOption, amount, items } = req.body;
 
-  if (!paymentOption || !amount) {
-    return res.status(400).json({ message: 'Payment option and amount are required.' });
+  if (!paymentOption || !amount || !items) {
+    return res.status(400).json({ message: 'Payment option, amount, and items are required.' });
   }
 
   try {
-    const paymentResponse = await initiatePayment(paymentOption, amount);
+    const paymentResponse = await initiatePayment(paymentOption, amount, items);
     res.status(200).json(paymentResponse);
   } catch (error) {
     console.error('Payment initiation failed:', error.message);
@@ -80,5 +80,5 @@ app.post('/api/payment-callback', (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on ${PORT}`);
 });

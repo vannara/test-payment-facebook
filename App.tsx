@@ -29,6 +29,10 @@ const App: React.FC = () => {
         } else if (result.khqr_image) {
             setFeedback({ type: 'success', message: 'QR Code generated successfully.' });
             setKhqrImage(`data:image/png;base64,${result.khqr_image}`);
+        } else {
+            // Handle cases where the response is successful but doesn't contain the expected data
+            console.error('Unexpected payment API response:', result);
+            setFeedback({ type: 'error', message: 'Received an unexpected response from the payment server.' });
         }
       } else {
          setFeedback({ type: 'success', message: result.message });
@@ -43,7 +47,15 @@ const App: React.FC = () => {
   const handlePayment = () => {
     if (!paymentOption || !amount) return;
     const paymentMethod = paymentOption === 'khqr' ? 'abapay_khqr' : 'cards';
-    handleApiCall(ActionType.Payment, () => api.createPayment(paymentMethod, amount));
+    
+    // Create a sample items array to send to the backend
+    const items = [{
+        name: "Sample Item",
+        quantity: 1,
+        price: parseFloat(amount)
+    }];
+
+    handleApiCall(ActionType.Payment, () => api.createPayment(paymentMethod, amount, items));
   };
   
   const handleFacebookPost = () => {
