@@ -23,14 +23,18 @@ const App: React.FC = () => {
     try {
       const result = await apiFn();
       if (action === ActionType.Payment) {
-        if (result.checkout_link) {
-            setFeedback({ type: 'success', message: 'Redirecting to payment page...' });
-            window.location.href = result.checkout_link;
+        if (result.html && typeof result.html === 'string') {
+            setFeedback({ type: 'success', message: 'Redirecting to secure payment page...' });
+            // The response is a full HTML page. We create a Blob and a local URL
+            // to render it, effectively navigating the user to the payment form.
+            const blob = new Blob([result.html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            window.location.replace(url); // Use replace to not add to browser history
+            return; // Stop execution to allow for redirect
         } else if (result.khqr_image) {
             setFeedback({ type: 'success', message: 'QR Code generated successfully.' });
             setKhqrImage(`data:image/png;base64,${result.khqr_image}`);
         } else {
-            // Handle cases where the response is successful but doesn't contain the expected data
             console.error('Unexpected payment API response:', result);
             setFeedback({ type: 'error', message: 'Received an unexpected response from the payment server.' });
         }

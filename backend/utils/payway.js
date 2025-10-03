@@ -63,8 +63,15 @@ export async function initiatePayment(paymentOption, amount, items) {
       },
     });
 
-    // **FIX:** Return the entire data object from PayWay.
-    // This is more robust and prevents issues where expected keys are missing.
+    // **FIX:** Normalize the response for the frontend.
+    // If the payment is by card, PayWay returns a full HTML document as a string.
+    // We wrap it in a JSON object so the frontend knows how to handle it.
+    if (typeof response.data === 'string') {
+        return { html: response.data };
+    }
+
+    // For other payment types like KHQR, PayWay returns JSON. Return it directly.
+   
     return response.data;
 
   } catch (error) {

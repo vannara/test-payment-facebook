@@ -23,7 +23,7 @@ const simulateApiCall = <T,>(data: T, delay = 1500): Promise<T> => {
   });
 };
 
-export const createPayment = async (paymentOption: string, amount: string, items: any[]): Promise<{ checkout_link?: string; khqr_image?: string }> => {
+export const createPayment = async (paymentOption: string, amount: string, items: any[]): Promise<{ html?: string; khqr_image?: string; }> => {
   try {
     const response = await axios.post(`${API_BASE_URL}/api/create-payment`, {
       paymentOption,
