@@ -50,21 +50,28 @@ export async function initiatePayment(paymentOption, amount, items) {
 
   const req_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const tran_id = generateTransactionId();
-  const itemsString = JSON.stringify(items);
   const formattedAmount = parseFloat(amount).toFixed(2);
+
+  // CRITICAL FIX: Ensure prices within items are also formatted strings 
+  // with 2 decimal places for hash consistency and payload accuracy.
+  const formattedItems = items.map(item => ({
+      ...item,
+      price: parseFloat(item.price).toFixed(2)
+  }));
+  const itemsString = JSON.stringify(formattedItems);
 
   const hashString = `${req_time}${tran_id}${MERCHANT_ID}${formattedAmount}${itemsString}${paymentOption}`;
   const hash = generateHash(hashString);
 
   const backendUrl = BACKEND_URL || 'http://localhost:4000';
-  const frontendUrl = FRONTEND_URL || 'http://localhost:3001';
+  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
 
   const payload = {
     req_time,
     tran_id,
     merchant_id: MERCHANT_ID,
     amount: formattedAmount,
-    items, // For API call, send as a JSON object, axios handles stringification
+    items: formattedItems, // Use the formatted items in the payload
     payment_option: paymentOption,
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
