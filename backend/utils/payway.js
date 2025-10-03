@@ -52,14 +52,16 @@ export async function initiatePayment(paymentOption, amount, items) {
   const tran_id = generateTransactionId();
   const formattedAmount = parseFloat(amount).toFixed(2);
 
+  // CRITICAL FIX: The 'price' must be a NUMBER (float), not a string, for the hash.
   const formattedItems = items.map(item => ({
       ...item,
-      price: parseFloat(item.price).toFixed(2)
+      // 1. Convert to number and fix to 2 decimal places.
+      // 2. Convert back to a number with parseFloat.
+      price: parseFloat(parseFloat(item.price).toFixed(2))
   }));
   const itemsString = JSON.stringify(formattedItems);
 
-  // CRITICAL FIX: The hash string MUST match the documentation exactly.
-  // It does NOT include the payment_option field.
+  // The hash string MUST match the documentation exactly.
   const hashString = `${req_time}${tran_id}${MERCHANT_ID}${formattedAmount}${itemsString}`;
   const hash = generateHash(hashString);
 
@@ -72,7 +74,7 @@ export async function initiatePayment(paymentOption, amount, items) {
     merchant_id: MERCHANT_ID,
     amount: formattedAmount,
     items: formattedItems,
-    payment_option: paymentOption, // This field is part of the payload, but not the hash.
+    payment_option: paymentOption,
     return_url: `${frontendUrl}/payment-success?tran_id=${tran_id}`,
     cancel_url: `${frontendUrl}/payment-cancel`,
     pushback_url: `${backendUrl}/api/payment-callback`,
