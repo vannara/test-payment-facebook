@@ -52,12 +52,10 @@ export async function initiatePayment(paymentOption, amount, items) {
   const tran_id = generateTransactionId();
   const formattedAmount = parseFloat(amount).toFixed(2);
 
-  // CRITICAL FIX: The 'price' must be a NUMBER (float), not a string, for the hash.
+  // CRITICAL FIX: The 'price' must be a STRING with two decimal places for the hash.
   const formattedItems = items.map(item => ({
       ...item,
-      // 1. Convert to number and fix to 2 decimal places.
-      // 2. Convert back to a number with parseFloat.
-      price: parseFloat(parseFloat(item.price).toFixed(2))
+      price: parseFloat(item.price).toFixed(2) // e.g., 1 becomes "1.00"
   }));
   const itemsString = JSON.stringify(formattedItems);
 
