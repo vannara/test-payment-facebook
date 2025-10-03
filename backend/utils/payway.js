@@ -77,6 +77,7 @@ export async function initiatePayment(paymentOption, amount, items) {
     cancel_url: `${frontendUrl}/payment-cancel`,
     pushback_url: `${backendUrl}/api/payment-callback`,
     hash,
+    view_type: 'popup'
   };
 
   try {
